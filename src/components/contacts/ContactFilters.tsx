@@ -38,6 +38,7 @@ export type ContactFilterOptions = {
   minRevenue?: number;
   status?: string;
   score?: number;
+  sortBy?: string;
 };
 
 interface ContactFiltersProps {
@@ -129,7 +130,7 @@ export function ContactFilters({
                       <SelectValue placeholder="Any industry" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any industry</SelectItem>
+                      <SelectItem value="any">Any industry</SelectItem>
                       {industries.map((industry) => (
                         <SelectItem key={industry} value={industry}>{industry}</SelectItem>
                       ))}
@@ -148,7 +149,7 @@ export function ContactFilters({
                       <SelectValue placeholder="Any country" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any country</SelectItem>
+                      <SelectItem value="any">Any country</SelectItem>
                       {countries.map((country) => (
                         <SelectItem key={country} value={country}>{country}</SelectItem>
                       ))}
@@ -167,7 +168,7 @@ export function ContactFilters({
                       <SelectValue placeholder="Any amount" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any amount</SelectItem>
+                      <SelectItem value="any">Any amount</SelectItem>
                       <SelectItem value="10000">$10,000+</SelectItem>
                       <SelectItem value="50000">$50,000+</SelectItem>
                       <SelectItem value="100000">$100,000+</SelectItem>
@@ -188,7 +189,7 @@ export function ContactFilters({
                       <SelectValue placeholder="Any status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any status</SelectItem>
+                      <SelectItem value="any">Any status</SelectItem>
                       <SelectItem value="lead">Lead</SelectItem>
                       <SelectItem value="prospect">Prospect</SelectItem>
                       <SelectItem value="customer">Customer</SelectItem>
@@ -207,7 +208,7 @@ export function ContactFilters({
                       <SelectValue placeholder="Any score" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any score</SelectItem>
+                      <SelectItem value="any">Any score</SelectItem>
                       <SelectItem value="1">1+</SelectItem>
                       <SelectItem value="2">2+</SelectItem>
                       <SelectItem value="3">3+</SelectItem>

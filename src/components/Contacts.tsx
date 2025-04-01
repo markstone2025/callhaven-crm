@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Search, Plus, MoreHorizontal, User, Mail, Phone, MapPin, Calendar, Tag, Building, Clock, Bell, Send, Briefcase, CreditCard, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -277,13 +276,13 @@ export function Contacts() {
       contact.company.toLowerCase().includes(searchQuery.toLowerCase());
     
     // Apply advanced filters
-    const matchesIndustry = !filters.industry || contact.industry === filters.industry;
-    const matchesCountry = !filters.country || contact.country === filters.country;
+    const matchesIndustry = !filters.industry || filters.industry === "any" || contact.industry === filters.industry;
+    const matchesCountry = !filters.country || filters.country === "any" || contact.country === filters.country;
     const matchesCompany = !filters.company || 
       contact.company.toLowerCase().includes(filters.company.toLowerCase());
     const matchesRevenue = !filters.minRevenue || 
       (contact.revenue && contact.revenue >= filters.minRevenue);
-    const matchesStatus = !filters.status || contact.status === filters.status;
+    const matchesStatus = !filters.status || filters.status === "any" || contact.status === filters.status;
     const matchesScore = !filters.score || 
       (contact.leadScore && contact.leadScore >= filters.score);
     

@@ -1,40 +1,23 @@
 
+// Import statements and interfaces
 import { useState } from "react";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  PlayCircle, 
-  FileText, 
-  ChevronDown, 
-  ChevronUp, 
-  Download 
-} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RecordingPlayer } from "@/components/RecordingPlayer";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Play, Calendar, Clock, Phone, User, FileText } from "lucide-react";
 
-interface CallRecording {
+interface Recording {
   id: string;
+  title: string;
   date: string;
   duration: string;
-  agentName: string;
-  fileUrl: string;
-  transcript?: string;
-  summary?: {
-    sentiment: "positive" | "neutral" | "negative";
-    keyPoints: string[];
-    actionItems?: string[];
+  caller: string;
+  recipient: string;
+  source: string;
+  transcript?: {
+    text: string;
+    highlights?: { time: string; text: string }[];
   };
 }
 
@@ -43,212 +26,204 @@ interface ContactCallRecordingsProps {
   contactName: string;
 }
 
-export function ContactCallRecordings({ 
-  contactId, 
-  contactName 
-}: ContactCallRecordingsProps) {
-  const [selectedRecording, setSelectedRecording] = useState<CallRecording | null>(null);
-  const [showTranscript, setShowTranscript] = useState(false);
+export function ContactCallRecordings({ contactId, contactName }: ContactCallRecordingsProps) {
+  const [selectedRecording, setSelectedRecording] = useState<Recording | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   
-  // Mock data for call recordings
-  const mockRecordings: CallRecording[] = [
+  const mockRecordings: Recording[] = [
     {
-      id: "rec-1",
-      date: "2023-09-15T14:30:00",
-      duration: "12:45",
-      agentName: "Sarah Johnson",
-      fileUrl: "https://example.com/recordings/call1.mp3",
-      transcript: "Agent: Hi, this is Sarah from Acme Corp. How are you today?\n\nCustomer: I'm doing well, thanks for asking.\n\nAgent: Great! I'm calling to follow up on the proposal we sent last week. Have you had a chance to review it?\n\nCustomer: Yes, I have. I had a few questions about pricing.\n\nAgent: I'd be happy to address those questions. Which part of the pricing were you concerned about?",
-      summary: {
-        sentiment: "positive",
-        keyPoints: [
-          "Customer has reviewed the proposal",
-          "Customer has questions about pricing",
-          "Customer expressed interest in moving forward after pricing clarification"
-        ],
-        actionItems: [
-          "Send updated pricing breakdown",
-          "Schedule follow-up call next week",
-          "Prepare demo for specific features customer mentioned"
+      id: "rec1",
+      title: "Initial Discovery Call",
+      date: "2023-06-10",
+      duration: "28:45",
+      caller: "Sarah Johnson",
+      recipient: contactName,
+      source: "/static/recording1.mp3",
+      transcript: {
+        text: "Hello, this is Sarah from Acme Corp. I'm calling about our enterprise solution. We discussed upgrading your plan last quarter.\n\nYes, I remember. We've been evaluating several options.\n\nGreat. I'd like to schedule a demo with our technical team to show you the new features.\n\nThat sounds good. Can we do it next week?\n\nAbsolutely. How about Tuesday at 2 PM?\n\nTuesday works. I'll have my team join as well.\n\nPerfect. I'll send a calendar invite with all the details.",
+        highlights: [
+          { time: "02:15", text: "Discussed upgrading plan from last quarter" },
+          { time: "05:30", text: "Client evaluating multiple vendor options" },
+          { time: "12:45", text: "Scheduled technical demo for next Tuesday" },
+          { time: "18:20", text: "Client team will join the demo call" }
         ]
       }
     },
     {
-      id: "rec-2",
-      date: "2023-08-22T10:15:00",
-      duration: "08:20",
-      agentName: "Michael Brown",
-      fileUrl: "https://example.com/recordings/call2.mp3",
-      transcript: "Agent: Hello, this is Michael from Acme Corp. Am I speaking with John?\n\nCustomer: Yes, that's me.\n\nAgent: I'm calling to check in and see how things are going with the current service.\n\nCustomer: It's been working well, but we're experiencing some issues with the reporting feature.\n\nAgent: I'm sorry to hear that. Can you tell me more about the specific problems you're facing?",
-      summary: {
-        sentiment: "neutral",
-        keyPoints: [
-          "Customer reported issues with reporting feature",
-          "Customer is otherwise satisfied with service",
-          "Technical support ticket was created during the call"
+      id: "rec2",
+      title: "Product Demo Follow-up",
+      date: "2023-07-15",
+      duration: "35:12",
+      caller: contactName,
+      recipient: "Mark Wilson",
+      source: "/static/recording2.mp3",
+      transcript: {
+        text: "Hi Mark, this is [Client Name]. I wanted to follow up on the demo we had last week.\n\nHi there! Thanks for calling. What did you think of the demo?\n\nIt was impressive. My team had a few questions about the implementation timeline.\n\nOf course. Typically, our implementation takes about 4-6 weeks depending on the complexity.\n\nThat works for our timeline. We're also concerned about data migration.\n\nWe have a dedicated migration team that handles that. They can create a custom plan for your specific needs.\n\nExcellent. I think we're ready to move forward. Can you send over the proposal with the pricing we discussed?\n\nAbsolutely. I'll have that to you by end of day tomorrow. Is there anything specific you'd like me to include?\n\nPlease include the implementation timeline and support details.\n\nWill do. Thanks for your time today!",
+        highlights: [
+          { time: "01:30", text: "Client impressed with product demo" },
+          { time: "04:15", text: "Implementation timeline: 4-6 weeks" },
+          { time: "10:20", text: "Data migration concerns addressed" },
+          { time: "15:45", text: "Client ready to move forward" },
+          { time: "18:30", text: "Proposal with pricing to be sent" }
         ]
       }
-    }
+    },
+    {
+      id: "rec3",
+      title: "Contract Discussion",
+      date: "2023-08-05",
+      duration: "22:18",
+      caller: "Emily Chen",
+      recipient: contactName,
+      source: "/static/recording3.mp3"
+    },
   ];
-
-  const handlePlayRecording = (recording: CallRecording) => {
+  
+  const handlePlayRecording = (recording: Recording) => {
     setSelectedRecording(recording);
-    setShowTranscript(false);
+    setIsPlaying(true);
   };
   
-  const toggleTranscript = () => {
-    setShowTranscript(!showTranscript);
-  };
-
-  const renderSummary = (summary: CallRecording['summary']) => {
-    if (!summary) return null;
-    
-    const sentimentColor = {
-      positive: "bg-green-100 text-green-800",
-      neutral: "bg-blue-100 text-blue-800",
-      negative: "bg-red-100 text-red-800"
-    };
-    
-    return (
-      <div className="space-y-4 mt-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">Call Sentiment:</span>
-          <Badge className={sentimentColor[summary.sentiment]}>
-            {summary.sentiment.charAt(0).toUpperCase() + summary.sentiment.slice(1)}
-          </Badge>
-        </div>
-        
-        <div>
-          <h4 className="text-sm font-medium mb-2">Key Points:</h4>
-          <ul className="list-disc pl-5 space-y-1">
-            {summary.keyPoints.map((point, i) => (
-              <li key={i} className="text-sm">{point}</li>
-            ))}
-          </ul>
-        </div>
-        
-        {summary.actionItems && (
-          <div>
-            <h4 className="text-sm font-medium mb-2">Action Items:</h4>
-            <ul className="list-disc pl-5 space-y-1">
-              {summary.actionItems.map((item, i) => (
-                <li key={i} className="text-sm">{item}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Call Recordings</CardTitle>
-        <CardDescription>
-          Recent calls with {contactName}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {mockRecordings.length > 0 ? (
-          <div className="space-y-6">
-            {selectedRecording ? (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-medium">
-                      Call with {contactName} - {new Date(selectedRecording.date).toLocaleDateString()}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Agent: {selectedRecording.agentName} • Duration: {selectedRecording.duration}
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setSelectedRecording(null)}>
-                    Back to list
-                  </Button>
-                </div>
-                
-                <div className="border rounded-md overflow-hidden">
-                  <RecordingPlayer />
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={toggleTranscript}
-                    className="gap-1"
-                  >
-                    <FileText className="h-4 w-4 mr-1" />
-                    {showTranscript ? "Hide Transcript" : "Show Transcript"}
-                    {showTranscript ? 
-                      <ChevronUp className="h-4 w-4" /> : 
-                      <ChevronDown className="h-4 w-4" />
-                    }
-                  </Button>
-                  <Button variant="outline" className="gap-1">
-                    <Download className="h-4 w-4 mr-1" />
-                    Download Recording
-                  </Button>
-                </div>
-                
-                {showTranscript && selectedRecording.transcript && (
-                  <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="transcript">
-                      <AccordionTrigger>Transcript</AccordionTrigger>
-                      <AccordionContent>
-                        <div className="whitespace-pre-line bg-muted p-3 rounded-md text-sm">
-                          {selectedRecording.transcript}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                    
-                    <AccordionItem value="summary">
-                      <AccordionTrigger>Call Summary</AccordionTrigger>
-                      <AccordionContent>
-                        {selectedRecording.summary ? (
-                          renderSummary(selectedRecording.summary)
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No summary available for this call.
-                          </p>
-                        )}
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                )}
+      <CardContent className="p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">Call Recordings</h3>
+        </div>
+        
+        {selectedRecording ? (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setSelectedRecording(null)}
+              >
+                Back to recordings
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                {new Date(selectedRecording.date).toLocaleDateString()} • {selectedRecording.duration}
               </div>
-            ) : (
-              <div className="space-y-3">
-                {mockRecordings.map((recording) => (
-                  <div 
-                    key={recording.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div>
-                      <div className="font-medium">
-                        {new Date(recording.date).toLocaleDateString()} - {new Date(recording.date).toLocaleTimeString()}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Agent: {recording.agentName} • Duration: {recording.duration}
-                      </div>
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handlePlayRecording(recording)}
-                    >
-                      <PlayCircle className="h-4 w-4 mr-2" />
-                      Play
-                    </Button>
-                  </div>
-                ))}
+            </div>
+            
+            <h2 className="text-xl font-semibold">{selectedRecording.title}</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="flex items-center text-sm">
+                <User className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>Caller: {selectedRecording.caller}</span>
+              </div>
+              <div className="flex items-center text-sm">
+                <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>Recipient: {selectedRecording.recipient}</span>
+              </div>
+              <div className="flex items-center text-sm">
+                <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>Date: {new Date(selectedRecording.date).toLocaleDateString()}</span>
+              </div>
+              <div className="flex items-center text-sm">
+                <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>Duration: {selectedRecording.duration}</span>
+              </div>
+            </div>
+            
+            <RecordingPlayer 
+              src={selectedRecording.source}
+              title={selectedRecording.title}
+            />
+            
+            {selectedRecording.transcript && (
+              <div className="mt-6">
+                <Tabs defaultValue="transcript">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="transcript">Full Transcript</TabsTrigger>
+                    <TabsTrigger value="highlights">Key Highlights</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="transcript" className="mt-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-2 mb-4">
+                          <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <h4 className="font-medium">Call Transcript</h4>
+                        </div>
+                        <p className="whitespace-pre-line text-sm">
+                          {selectedRecording.transcript.text}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                  
+                  <TabsContent value="highlights" className="mt-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-2 mb-4">
+                          <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <h4 className="font-medium">Key Highlights</h4>
+                        </div>
+                        {selectedRecording.transcript.highlights ? (
+                          <div className="space-y-3">
+                            {selectedRecording.transcript.highlights.map((highlight, index) => (
+                              <div key={index} className="border-l-2 border-primary pl-3 py-1">
+                                <div className="text-xs text-muted-foreground mb-1">
+                                  {highlight.time}
+                                </div>
+                                <p className="text-sm">{highlight.text}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No highlights available for this call.</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
           </div>
         ) : (
-          <div className="text-center py-6 text-muted-foreground">
-            No call recordings found for this contact.
-          </div>
+          <>
+            {mockRecordings.length > 0 ? (
+              <div className="space-y-3">
+                {mockRecordings.map(recording => (
+                  <div 
+                    key={recording.id} 
+                    className="flex items-center justify-between border-b pb-3 last:border-0"
+                  >
+                    <div className="flex-1">
+                      <h4 className="font-medium">{recording.title}</h4>
+                      <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4 mt-1">
+                        <span className="flex items-center">
+                          <Calendar className="h-3.5 w-3.5 mr-1" />
+                          {new Date(recording.date).toLocaleDateString()}
+                        </span>
+                        <span className="flex items-center">
+                          <Clock className="h-3.5 w-3.5 mr-1" />
+                          {recording.duration}
+                        </span>
+                        <span className="flex items-center">
+                          <User className="h-3.5 w-3.5 mr-1" />
+                          {recording.caller}
+                        </span>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="ml-4 gap-1"
+                      onClick={() => handlePlayRecording(recording)}
+                    >
+                      <Play className="h-3.5 w-3.5" />
+                      Listen
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No call recordings available for this contact.</p>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
