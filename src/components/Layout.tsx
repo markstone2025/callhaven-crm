@@ -8,7 +8,11 @@ import {
   Settings, 
   ChevronLeft, 
   ChevronRight, 
-  LogOut 
+  LogOut,
+  DollarSign,
+  BarChart3,
+  Calendar,
+  Briefcase
 } from "lucide-react";
 import { 
   Sidebar, 
@@ -64,14 +68,29 @@ function AppSidebar() {
       icon: <LayoutGrid className="w-5 h-5" />
     },
     {
+      path: "/sales-dashboard",
+      name: "Sales Dashboard",
+      icon: <BarChart3 className="w-5 h-5" />
+    },
+    {
       path: "/contacts",
       name: "Contacts",
       icon: <Users className="w-5 h-5" />
     },
     {
+      path: "/sales-pipeline",
+      name: "Deals Pipeline",
+      icon: <DollarSign className="w-5 h-5" />
+    },
+    {
       path: "/call-recordings",
       name: "Call Recordings",
       icon: <Phone className="w-5 h-5" />
+    },
+    {
+      path: "/calendar",
+      name: "Calendar",
+      icon: <Calendar className="w-5 h-5" />
     },
     {
       path: "/settings",
