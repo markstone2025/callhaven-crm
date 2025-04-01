@@ -31,7 +31,7 @@ export function Layout({ children }: LayoutProps) {
   const isMobile = useIsMobile();
   
   return (
-    <SidebarProvider defaultCollapsed={isMobile} onCollapsedChange={setCollapsed}>
+    <SidebarProvider defaultOpen={!isMobile} onOpenChange={setCollapsed}>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
