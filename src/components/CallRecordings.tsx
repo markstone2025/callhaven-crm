@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { Search, Phone, User, Clock, Calendar, MessageSquare, MoreHorizontal, Download, ExternalLink } from "lucide-react";
+import { Search, Phone, User, Clock, Calendar, MessageSquare, MoreHorizontal, Download, ExternalLink, Mail, FileText, CheckCircle, Slack } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -16,13 +15,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
-// Mock data for call recordings
 interface Recording {
   id: string;
   title: string;
   contact: {
     name: string;
+    email?: string;
     avatar?: string;
     company?: string;
   };
@@ -33,6 +35,11 @@ interface Recording {
   audioUrl: string;
   transcriptAvailable: boolean;
   tags: string[];
+  transcript?: {
+    text: string;
+    highlights?: { time: string; text: string }[];
+  };
+  summary?: string;
 }
 
 const mockRecordings: Recording[] = [
@@ -41,6 +48,7 @@ const mockRecordings: Recording[] = [
     title: "Product Demo Call",
     contact: {
       name: "Mark Johnson",
+      email: "mark@acmeinc.com",
       company: "Acme Inc.",
     },
     date: "2023-09-15T14:30:00",
@@ -49,13 +57,24 @@ const mockRecordings: Recording[] = [
     status: "completed",
     audioUrl: "https://ia800107.us.archive.org/15/items/LoveAndMarriage_124/LoveAndMarriage.mp3",
     transcriptAvailable: true,
-    tags: ["demo", "product", "follow-up"]
+    tags: ["demo", "product", "follow-up"],
+    transcript: {
+      text: "Sales Rep: Hi Mark, thanks for joining the call today. I wanted to walk you through our product features as we discussed last week.\n\nMark: Hi, yes, I've been looking forward to this. I'm particularly interested in the reporting capabilities.\n\nSales Rep: Great! Let me share my screen and show you the dashboard. As you can see, our analytics provide real-time metrics on all your sales activities.\n\nMark: That looks impressive. Can multiple team members access these reports?\n\nSales Rep: Absolutely! You can set different permission levels for your team. Let me show you how that works...\n\nMark: Perfect. And what about integration with our current CRM?\n\nSales Rep: We have a seamless integration process. I can arrange a call with our implementation team to discuss the specifics of your setup.\n\nMark: That would be helpful. I think this solution could work well for us.",
+      highlights: [
+        { time: "02:15", text: "Client interested in reporting capabilities" },
+        { time: "05:30", text: "Discussed team permission levels" },
+        { time: "12:45", text: "Client impressed with dashboard" },
+        { time: "18:20", text: "Integration with current CRM is important" }
+      ]
+    },
+    summary: "Mark from Acme Inc. showed strong interest in our product, particularly the reporting features and team permission controls. He was impressed with the dashboard and asked about CRM integration. A follow-up with the implementation team is needed to discuss integration specifics. Overall positive reception with potential for closing soon."
   },
   {
     id: "2",
     title: "Support Call",
     contact: {
       name: "Sarah Williams",
+      email: "sarah@globexcorp.com",
       company: "Globex Corp",
     },
     date: "2023-09-14T10:15:00",
@@ -64,7 +83,17 @@ const mockRecordings: Recording[] = [
     status: "completed",
     audioUrl: "https://ia801309.us.archive.org/34/items/PaulWhitemanwithMildredBailey/PaulWhitemanWithMildredBaileyTheOldManOfTheMountain.mp3",
     transcriptAvailable: true,
-    tags: ["support", "bug", "resolved"]
+    tags: ["support", "bug", "resolved"],
+    transcript: {
+      text: "Support: Thank you for calling support. How can I help you today?\n\nSarah: I'm having an issue with the reporting module. It seems to be showing incorrect data for the last month.\n\nSupport: I'm sorry to hear that. Let me take a look. Can you tell me which specific reports are affected?\n\nSarah: It's mainly the sales forecast report. The numbers don't match our actual sales records.\n\nSupport: I see the issue now. There appears to be a calculation error in the latest update. Let me apply a quick fix.\n\nSarah: That would be great. We need these reports for a meeting tomorrow.\n\nSupport: I've applied the fix. Can you refresh your browser and check if the data looks correct now?\n\nSarah: Yes, it's working correctly now. Thank you for the quick resolution.\n\nSupport: You're welcome. Is there anything else I can help you with today?",
+      highlights: [
+        { time: "01:20", text: "Issue with reporting module showing incorrect data" },
+        { time: "03:45", text: "Sales forecast report numbers don't match actual records" },
+        { time: "06:30", text: "Identified calculation error in latest update" },
+        { time: "08:15", text: "Applied fix and verified working" }
+      ]
+    },
+    summary: "Sarah from Globex Corp reported issues with the sales forecast report showing incorrect data. The problem was identified as a calculation error in the latest update. A fix was applied during the call and Sarah confirmed the problem was resolved. The quick resolution was appreciated as they needed the reports for a meeting the next day."
   },
   {
     id: "3",
@@ -113,7 +142,6 @@ const mockRecordings: Recording[] = [
   },
 ];
 
-// Direction and status color mappings
 const directionIcons = {
   inbound: <Phone className="h-4 w-4 rotate-180" />,
   outbound: <Phone className="h-4 w-4" />
@@ -129,6 +157,13 @@ export function CallRecordings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRecording, setSelectedRecording] = useState<Recording | null>(null);
   const [recordings, setRecordings] = useState<Recording[]>(mockRecordings);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [slackDialogOpen, setSlackDialogOpen] = useState(false);
+  const [emailContent, setEmailContent] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [slackMessage, setSlackMessage] = useState("");
+  const [showSummary, setShowSummary] = useState(false);
+  const { toast } = useToast();
 
   const filteredRecordings = recordings.filter(recording =>
     recording.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -147,6 +182,58 @@ export function CallRecordings() {
       minute: '2-digit',
       hour12: true
     }).format(date);
+  };
+
+  const handleSendEmail = () => {
+    if (!selectedRecording || !emailSubject || !emailContent) {
+      toast({
+        title: "Incomplete Form",
+        description: "Please fill in all fields to send the email",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Email Sent",
+      description: `Email sent to ${selectedRecording.contact.name}`,
+    });
+
+    setEmailDialogOpen(false);
+    setEmailContent("");
+    setEmailSubject("");
+  };
+
+  const handleSendSlackMessage = () => {
+    if (!selectedRecording || !slackMessage) {
+      toast({
+        title: "Incomplete Form",
+        description: "Please enter a message to send",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Slack Message Sent",
+      description: `Message sent to ${selectedRecording.contact.name} via Slack`,
+    });
+
+    setSlackDialogOpen(false);
+    setSlackMessage("");
+  };
+
+  const openEmailDialog = () => {
+    if (selectedRecording) {
+      setEmailSubject(`Follow-up: ${selectedRecording.title}`);
+      setEmailDialogOpen(true);
+    }
+  };
+
+  const openSlackDialog = () => {
+    if (selectedRecording) {
+      setSlackDialogOpen(true);
+    }
   };
 
   return (
@@ -217,6 +304,21 @@ export function CallRecordings() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Options</DropdownMenuLabel>
                         <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          openEmailDialog();
+                        }}>
+                          <Mail className="h-4 w-4 mr-2" />
+                          Send Email
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          openSlackDialog();
+                        }}>
+                          <Slack className="h-4 w-4 mr-2" />
+                          Send Slack Message
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem>
                           <Download className="h-4 w-4 mr-2" />
                           Download recording
@@ -276,18 +378,14 @@ export function CallRecordings() {
             
             <TabsContent value="inbound" className="space-y-4">
               {filteredRecordings.filter(r => r.direction === 'inbound').map((recording) => (
-                // Similar card component as above, filtered for inbound calls
                 <Card 
                   key={recording.id} 
                   className={`${selectedRecording?.id === recording.id ? 'ring-2 ring-primary' : ''}`}
                   onClick={() => setSelectedRecording(recording)}
                 >
-                  {/* Same content as above */}
                   <CardHeader className="p-4 pb-2">
-                    {/* ... */}
                     <h3 className="font-semibold text-sm">{recording.title}</h3>
                   </CardHeader>
-                  {/* ... remaining card content */}
                 </Card>
               ))}
               
@@ -304,18 +402,14 @@ export function CallRecordings() {
             
             <TabsContent value="outbound" className="space-y-4">
               {filteredRecordings.filter(r => r.direction === 'outbound').map((recording) => (
-                // Similar card component as above, filtered for outbound calls
                 <Card 
                   key={recording.id} 
                   className={`${selectedRecording?.id === recording.id ? 'ring-2 ring-primary' : ''}`}
                   onClick={() => setSelectedRecording(recording)}
                 >
-                  {/* Same content as above */}
                   <CardHeader className="p-4 pb-2">
-                    {/* ... */}
                     <h3 className="font-semibold text-sm">{recording.title}</h3>
                   </CardHeader>
-                  {/* ... remaining card content */}
                 </Card>
               ))}
               
@@ -383,6 +477,16 @@ export function CallRecordings() {
                         ))}
                       </div>
                     </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button variant="outline" size="sm" onClick={openEmailDialog}>
+                        <Mail className="mr-2 h-4 w-4" />
+                        Email Contact
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={openSlackDialog}>
+                        <Slack className="mr-2 h-4 w-4" />
+                        Slack Message
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -392,19 +496,56 @@ export function CallRecordings() {
                 title={`${selectedRecording.title} - ${selectedRecording.contact.name}`}
               />
               
-              {selectedRecording.transcriptAvailable && (
+              {selectedRecording.transcriptAvailable && selectedRecording.transcript && (
                 <Card>
                   <CardHeader className="p-4 pb-2">
                     <h3 className="font-semibold">Transcript</h3>
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
-                    <p className="text-sm text-muted-foreground">
-                      The transcript for this call is available. Click below to view the full transcript.
-                    </p>
-                    <Button variant="outline" className="mt-4 w-full">
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      View Transcript
-                    </Button>
+                    <Tabs defaultValue="transcript">
+                      <TabsList>
+                        <TabsTrigger value="transcript">Full Transcript</TabsTrigger>
+                        <TabsTrigger value="highlights">Key Highlights</TabsTrigger>
+                        {selectedRecording.summary && (
+                          <TabsTrigger value="summary">Summary</TabsTrigger>
+                        )}
+                      </TabsList>
+                      
+                      <TabsContent value="transcript" className="mt-4">
+                        <div className="p-4 border rounded-md bg-muted/30">
+                          <pre className="whitespace-pre-wrap text-sm font-sans">
+                            {selectedRecording.transcript.text}
+                          </pre>
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="highlights" className="mt-4">
+                        <div className="space-y-3">
+                          {selectedRecording.transcript.highlights?.map((highlight, index) => (
+                            <div key={index} className="border-l-2 border-primary pl-3 py-1">
+                              <div className="text-xs text-muted-foreground mb-1">
+                                {highlight.time}
+                              </div>
+                              <p className="text-sm">{highlight.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </TabsContent>
+                      
+                      {selectedRecording.summary && (
+                        <TabsContent value="summary" className="mt-4">
+                          <div className="p-4 border rounded-md bg-primary/5">
+                            <div className="flex items-center gap-2 mb-3">
+                              <CheckCircle className="h-5 w-5 text-primary" />
+                              <h4 className="font-medium">Call Summary</h4>
+                            </div>
+                            <p className="text-sm">
+                              {selectedRecording.summary}
+                            </p>
+                          </div>
+                        </TabsContent>
+                      )}
+                    </Tabs>
                   </CardContent>
                 </Card>
               )}
@@ -437,6 +578,107 @@ export function CallRecordings() {
           )}
         </div>
       </div>
+
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Send Email</DialogTitle>
+            <DialogDescription>
+              Send an email to {selectedRecording?.contact.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="email-to" className="text-right text-sm font-medium">
+                To
+              </label>
+              <Input
+                id="email-to"
+                value={selectedRecording?.contact.email || ""}
+                className="col-span-3"
+                readOnly
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="email-subject" className="text-right text-sm font-medium">
+                Subject
+              </label>
+              <Input
+                id="email-subject"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-start gap-4">
+              <label htmlFor="email-content" className="text-right text-sm font-medium pt-2">
+                Message
+              </label>
+              <Textarea
+                id="email-content"
+                value={emailContent}
+                onChange={(e) => setEmailContent(e.target.value)}
+                className="col-span-3 min-h-[150px]"
+                placeholder="Write your message here..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendEmail}>
+              <Mail className="mr-2 h-4 w-4" />
+              Send Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={slackDialogOpen} onOpenChange={setSlackDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Send Slack Message</DialogTitle>
+            <DialogDescription>
+              Send a Slack message to {selectedRecording?.contact.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="slack-to" className="text-right text-sm font-medium">
+                To
+              </label>
+              <Input
+                id="slack-to"
+                value={selectedRecording?.contact.name || ""}
+                className="col-span-3"
+                readOnly
+              />
+            </div>
+            <div className="grid grid-cols-4 items-start gap-4">
+              <label htmlFor="slack-message" className="text-right text-sm font-medium pt-2">
+                Message
+              </label>
+              <Textarea
+                id="slack-message"
+                value={slackMessage}
+                onChange={(e) => setSlackMessage(e.target.value)}
+                className="col-span-3 min-h-[150px]"
+                placeholder="Write your message here..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSlackDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendSlackMessage}>
+              <Slack className="mr-2 h-4 w-4" />
+              Send Message
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
