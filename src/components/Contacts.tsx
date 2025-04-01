@@ -1,5 +1,6 @@
+
 import { useState } from "react";
-import { Search, Plus, MoreHorizontal, User, Mail, Phone, MapPin, Calendar, Tag, Building, Clock } from "lucide-react";
+import { Search, Plus, MoreHorizontal, User, Mail, Phone, MapPin, Calendar, Tag, Building, Clock, Bell, Send, Briefcase, CreditCard, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +15,20 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ContactFilters, ContactFilterOptions } from "./contacts/ContactFilters";
+import { LeadScoreCard } from "./contacts/LeadScoreCard";
+import { EmailDialog } from "./contacts/EmailDialog";
+import { ReminderDialog } from "./contacts/ReminderDialog";
+import { ContactCallRecordings } from "./contacts/ContactCallRecordings";
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
 
 interface Interaction {
   id: string;
@@ -37,6 +52,12 @@ interface Contact {
   title?: string;
   assignedTo?: string;
   createdDate?: string;
+  industry?: string;
+  revenue?: number;
+  country?: string;
+  leadScore?: number;
+  website?: string;
+  nextFollowUp?: string;
 }
 
 const mockContacts: Contact[] = [
@@ -54,6 +75,12 @@ const mockContacts: Contact[] = [
     assignedTo: "Sarah Johnson",
     createdDate: "2023-01-15",
     lastInteraction: "2023-06-10",
+    industry: "Technology",
+    revenue: 1500000,
+    country: "USA",
+    leadScore: 4.5,
+    website: "https://acmeinc.com",
+    nextFollowUp: "2023-10-15",
     interactions: [
       {
         id: "int1",
@@ -83,6 +110,12 @@ const mockContacts: Contact[] = [
     assignedTo: "Mark Wilson",
     createdDate: "2023-02-20",
     lastInteraction: "2023-05-28",
+    industry: "Healthcare",
+    revenue: 750000,
+    country: "USA",
+    leadScore: 3.0,
+    website: "https://globexcorp.com",
+    nextFollowUp: "2023-10-20",
     interactions: [
       {
         id: "int3",
@@ -106,6 +139,11 @@ const mockContacts: Contact[] = [
     assignedTo: "Emily Chen",
     createdDate: "2023-03-10",
     lastInteraction: "2023-06-15",
+    industry: "Manufacturing",
+    revenue: 350000,
+    country: "USA",
+    leadScore: 2.5,
+    website: "https://initech.com",
     interactions: [
       {
         id: "int4",
@@ -129,6 +167,12 @@ const mockContacts: Contact[] = [
     assignedTo: "John Doe",
     createdDate: "2023-04-10",
     lastInteraction: "2023-07-10",
+    industry: "Finance",
+    revenue: 900000,
+    country: "USA",
+    leadScore: 5.0,
+    website: "https://massivedynamic.com",
+    nextFollowUp: "2023-11-05",
     interactions: [
       {
         id: "int5",
@@ -152,6 +196,12 @@ const mockContacts: Contact[] = [
     assignedTo: "Jane Smith",
     createdDate: "2023-05-10",
     lastInteraction: "2023-08-10",
+    industry: "Technology",
+    revenue: 2500000,
+    country: "USA",
+    leadScore: 3.5,
+    website: "https://starkindustries.com",
+    nextFollowUp: "2023-10-25",
     interactions: [
       {
         id: "int6",
@@ -175,6 +225,12 @@ const mockContacts: Contact[] = [
     assignedTo: "Robert Johnson",
     createdDate: "2023-06-10",
     lastInteraction: "2023-09-10",
+    industry: "Healthcare",
+    revenue: 1200000,
+    country: "USA",
+    leadScore: 4.0,
+    website: "https://wayneenterprises.com",
+    nextFollowUp: "2023-11-10",
     interactions: [
       {
         id: "int7",
@@ -199,17 +255,65 @@ const interactionIcons = {
   note: <Clock className="h-4 w-4" />,
 };
 
+const industries = ["Technology", "Healthcare", "Finance", "Manufacturing", "Retail", "Education", "Media", "Consulting"];
+const countries = ["USA", "Canada", "UK", "Germany", "France", "Australia", "Japan", "India"];
+
 export function Contacts() {
   const [searchQuery, setSearchQuery] = useState("");
   const [contacts, setContacts] = useState<Contact[]>(mockContacts);
   const [selectedView, setSelectedView] = useState<"cards" | "list">("cards");
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [filters, setFilters] = useState<ContactFilterOptions>({});
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
 
-  const filteredContacts = contacts.filter(contact =>
-    contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    contact.company.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredContacts = contacts.filter(contact => {
+    // Search filter
+    const matchesSearch = 
+      !searchQuery || 
+      contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      contact.company.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Apply advanced filters
+    const matchesIndustry = !filters.industry || contact.industry === filters.industry;
+    const matchesCountry = !filters.country || contact.country === filters.country;
+    const matchesCompany = !filters.company || 
+      contact.company.toLowerCase().includes(filters.company.toLowerCase());
+    const matchesRevenue = !filters.minRevenue || 
+      (contact.revenue && contact.revenue >= filters.minRevenue);
+    const matchesStatus = !filters.status || contact.status === filters.status;
+    const matchesScore = !filters.score || 
+      (contact.leadScore && contact.leadScore >= filters.score);
+    
+    return matchesSearch && matchesIndustry && matchesCountry && 
+           matchesCompany && matchesRevenue && matchesStatus && matchesScore;
+  });
+
+  // Apply sorting
+  const sortedContacts = [...filteredContacts].sort((a, b) => {
+    if (!filters.sortBy) return 0;
+    
+    switch (filters.sortBy) {
+      case "name": return a.name.localeCompare(b.name);
+      case "nameDesc": return b.name.localeCompare(a.name);
+      case "company": return a.company.localeCompare(b.company);
+      case "score": 
+        return (b.leadScore || 0) - (a.leadScore || 0);
+      case "scoreAsc": 
+        return (a.leadScore || 0) - (b.leadScore || 0);
+      case "revenueDesc": 
+        return (b.revenue || 0) - (a.revenue || 0);
+      case "revenueAsc": 
+        return (a.revenue || 0) - (b.revenue || 0);
+      case "newest":
+        return new Date(b.createdDate || "").getTime() - new Date(a.createdDate || "").getTime();
+      case "oldest":
+        return new Date(a.createdDate || "").getTime() - new Date(b.createdDate || "").getTime();
+      default: return 0;
+    }
+  });
 
   const handleViewContact = (contact: Contact) => {
     setSelectedContact(contact);
@@ -219,10 +323,34 @@ export function Contacts() {
     setSelectedContact(null);
   };
 
+  const handleSelectContact = (contactId: string) => {
+    if (selectedContacts.includes(contactId)) {
+      setSelectedContacts(selectedContacts.filter(id => id !== contactId));
+    } else {
+      setSelectedContacts([...selectedContacts, contactId]);
+    }
+  };
+
+  const handleSelectAllContacts = () => {
+    if (selectedContacts.length === sortedContacts.length) {
+      setSelectedContacts([]);
+    } else {
+      setSelectedContacts(sortedContacts.map(contact => contact.id));
+    }
+  };
+
+  const getSelectedContactObjects = () => {
+    return contacts.filter(contact => selectedContacts.includes(contact.id));
+  };
+
   return (
     <div className="space-y-6">
       {selectedContact ? (
-        <ContactDetail contact={selectedContact} onClose={handleCloseDetail} />
+        <ContactDetail 
+          contact={selectedContact} 
+          onClose={handleCloseDetail} 
+          onSetReminder={() => setIsReminderDialogOpen(true)}
+        />
       ) : (
         <>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -230,52 +358,92 @@ export function Contacts() {
               <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
               <p className="text-muted-foreground">Manage your contacts and leads</p>
             </div>
-            <Button className="shrink-0">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Contact
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {selectedContacts.length > 0 && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    className="gap-1"
+                    onClick={() => setIsEmailDialogOpen(true)}
+                  >
+                    <Send className="h-4 w-4" />
+                    Email Selected
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="gap-1"
+                    onClick={() => setIsReminderDialogOpen(true)}
+                  >
+                    <Bell className="h-4 w-4" />
+                    Set Reminder
+                  </Button>
+                </>
+              )}
+              <Button className="shrink-0">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Contact
+              </Button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search contacts..."
-                className="pl-8"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-start gap-4">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search contacts..."
+                  className="pl-8 w-full"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <div className="flex space-x-2 w-full sm:w-auto">
+                <Button
+                  variant={selectedView === "cards" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedView("cards")}
+                  className="flex-1 sm:flex-none"
+                >
+                  Cards
+                </Button>
+                <Button
+                  variant={selectedView === "list" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedView("list")}
+                  className="flex-1 sm:flex-none"
+                >
+                  List
+                </Button>
+              </div>
             </div>
-            <div className="flex space-x-2">
-              <Button
-                variant={selectedView === "cards" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedView("cards")}
-              >
-                Cards
-              </Button>
-              <Button
-                variant={selectedView === "list" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedView("list")}
-              >
-                List
-              </Button>
-            </div>
+
+            <ContactFilters 
+              filters={filters} 
+              setFilters={setFilters} 
+              industries={industries}
+              countries={countries}
+            />
           </div>
 
           {selectedView === "cards" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredContacts.map((contact) => (
+              {sortedContacts.map((contact) => (
                 <Card key={contact.id} className="overflow-hidden">
                   <CardContent className="p-0">
                     <div className="p-6">
                       <div className="flex items-start justify-between">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={contact.avatar} alt={contact.name} />
-                          <AvatarFallback>{contact.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
+                        <div className="flex items-center gap-2">
+                          <Checkbox 
+                            checked={selectedContacts.includes(contact.id)}
+                            onCheckedChange={() => handleSelectContact(contact.id)}
+                            aria-label={`Select ${contact.name}`}
+                          />
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={contact.avatar} alt={contact.name} />
+                            <AvatarFallback>{contact.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                        </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -289,7 +457,10 @@ export function Contacts() {
                             <DropdownMenuItem onClick={() => handleViewContact(contact)}>View details</DropdownMenuItem>
                             <DropdownMenuItem>Edit</DropdownMenuItem>
                             <DropdownMenuItem>View calls</DropdownMenuItem>
-                            <DropdownMenuItem>Add task</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setSelectedContact(contact);
+                              setIsReminderDialogOpen(true);
+                            }}>Add reminder</DropdownMenuItem>
                             <DropdownMenuItem>Add to deal</DropdownMenuItem>
                             <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
                           </DropdownMenuContent>
@@ -299,10 +470,13 @@ export function Contacts() {
                         <h3 className="font-semibold text-lg leading-none">{contact.name}</h3>
                         <p className="text-sm text-muted-foreground mt-1">{contact.title ? `${contact.title}, ` : ''}{contact.company}</p>
                       </div>
-                      <div className="mt-2">
+                      <div className="mt-2 flex items-center justify-between">
                         <Badge variant="outline" className={statusColors[contact.status]}>
                           {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
                         </Badge>
+                        {contact.leadScore && (
+                          <LeadScoreCard score={contact.leadScore} />
+                        )}
                       </div>
                       {contact.tags && (
                         <div className="flex flex-wrap gap-1 mt-2">
@@ -323,14 +497,22 @@ export function Contacts() {
                         <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
                         <span>{contact.phone}</span>
                       </div>
-                      <div className="flex items-center text-sm">
-                        <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span>{contact.location}</span>
-                      </div>
-                      {contact.lastInteraction && (
+                      {contact.industry && (
                         <div className="flex items-center text-sm">
-                          <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                          <span>Last activity: {contact.lastInteraction}</span>
+                          <Briefcase className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <span>{contact.industry}</span>
+                        </div>
+                      )}
+                      {contact.revenue && (
+                        <div className="flex items-center text-sm">
+                          <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <span>${contact.revenue.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {contact.nextFollowUp && (
+                        <div className="flex items-center text-sm">
+                          <Bell className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <span>Follow-up: {new Date(contact.nextFollowUp).toLocaleDateString()}</span>
                         </div>
                       )}
                     </div>
@@ -339,22 +521,37 @@ export function Contacts() {
               ))}
             </div>
           ) : (
-            <div className="border rounded-md">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="py-3 px-4 text-left font-medium">Name</th>
-                    <th className="py-3 px-4 text-left font-medium hidden md:table-cell">Company</th>
-                    <th className="py-3 px-4 text-left font-medium hidden lg:table-cell">Email</th>
-                    <th className="py-3 px-4 text-left font-medium hidden xl:table-cell">Phone</th>
-                    <th className="py-3 px-4 text-left font-medium">Status</th>
-                    <th className="py-3 px-4 text-right font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredContacts.map((contact) => (
-                    <tr key={contact.id} className="border-b hover:bg-muted/30">
-                      <td className="py-3 px-4">
+            <div className="border rounded-md overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox 
+                        checked={selectedContacts.length === sortedContacts.length && sortedContacts.length > 0}
+                        onCheckedChange={handleSelectAllContacts}
+                        aria-label="Select all contacts"
+                      />
+                    </TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead className="hidden md:table-cell">Company</TableHead>
+                    <TableHead className="hidden lg:table-cell">Email</TableHead>
+                    <TableHead className="hidden xl:table-cell">Industry</TableHead>
+                    <TableHead>Score</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedContacts.map((contact) => (
+                    <TableRow key={contact.id} className="hover:bg-muted/30">
+                      <TableCell>
+                        <Checkbox 
+                          checked={selectedContacts.includes(contact.id)}
+                          onCheckedChange={() => handleSelectContact(contact.id)}
+                          aria-label={`Select ${contact.name}`}
+                        />
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={contact.avatar} alt={contact.name} />
@@ -365,16 +562,23 @@ export function Contacts() {
                             <div className="text-xs text-muted-foreground">{contact.title}</div>
                           </div>
                         </div>
-                      </td>
-                      <td className="py-3 px-4 hidden md:table-cell">{contact.company}</td>
-                      <td className="py-3 px-4 hidden lg:table-cell">{contact.email}</td>
-                      <td className="py-3 px-4 hidden xl:table-cell">{contact.phone}</td>
-                      <td className="py-3 px-4">
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{contact.company}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{contact.email}</TableCell>
+                      <TableCell className="hidden xl:table-cell">{contact.industry || '-'}</TableCell>
+                      <TableCell>
+                        {contact.leadScore ? (
+                          <LeadScoreCard score={contact.leadScore} size="sm" showTooltip={false} />
+                        ) : (
+                          '-'
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <Badge variant="outline" className={statusColors[contact.status]}>
                           {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
                         </Badge>
-                      </td>
-                      <td className="py-2 px-4 text-right">
+                      </TableCell>
+                      <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -388,35 +592,60 @@ export function Contacts() {
                             <DropdownMenuItem onClick={() => handleViewContact(contact)}>View details</DropdownMenuItem>
                             <DropdownMenuItem>Edit</DropdownMenuItem>
                             <DropdownMenuItem>View calls</DropdownMenuItem>
-                            <DropdownMenuItem>Add task</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setSelectedContact(contact);
+                              setIsReminderDialogOpen(true);
+                            }}>Add reminder</DropdownMenuItem>
                             <DropdownMenuItem>Add to deal</DropdownMenuItem>
                             <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
 
-          {filteredContacts.length === 0 && (
+          {sortedContacts.length === 0 && (
             <div className="text-center py-12">
               <User className="mx-auto h-12 w-12 text-muted-foreground opacity-30" />
               <h3 className="mt-4 text-lg font-semibold">No contacts found</h3>
               <p className="text-muted-foreground mt-2">
-                Try adjusting your search or add a new contact.
+                Try adjusting your search or filters, or add a new contact.
               </p>
             </div>
           )}
         </>
       )}
+
+      {/* Email Dialog */}
+      <EmailDialog 
+        open={isEmailDialogOpen}
+        onOpenChange={setIsEmailDialogOpen}
+        selectedContacts={getSelectedContactObjects()}
+      />
+
+      {/* Reminder Dialog */}
+      <ReminderDialog
+        open={isReminderDialogOpen}
+        onOpenChange={setIsReminderDialogOpen}
+        contact={selectedContact}
+      />
     </div>
   );
 }
 
-function ContactDetail({ contact, onClose }: { contact: Contact, onClose: () => void }) {
+function ContactDetail({ 
+  contact, 
+  onClose,
+  onSetReminder 
+}: { 
+  contact: Contact; 
+  onClose: () => void;
+  onSetReminder: () => void;
+}) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -424,6 +653,10 @@ function ContactDetail({ contact, onClose }: { contact: Contact, onClose: () => 
           Back to Contacts
         </Button>
         <div className="flex space-x-2">
+          <Button variant="outline" onClick={onSetReminder}>
+            <Bell className="h-4 w-4 mr-2" />
+            Set Reminder
+          </Button>
           <Button variant="outline">
             Edit Contact
           </Button>
@@ -445,10 +678,17 @@ function ContactDetail({ contact, onClose }: { contact: Contact, onClose: () => 
                 <h2 className="text-2xl font-bold">{contact.name}</h2>
                 <p className="text-muted-foreground">{contact.title}</p>
                 <p className="font-medium">{contact.company}</p>
-                <div className="mt-2">
+                
+                <div className="mt-2 flex items-center gap-2">
                   <Badge variant="outline" className={statusColors[contact.status]}>
                     {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
                   </Badge>
+                  
+                  {contact.leadScore && (
+                    <div className="flex items-center gap-1">
+                      <LeadScoreCard score={contact.leadScore} />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -469,6 +709,26 @@ function ContactDetail({ contact, onClose }: { contact: Contact, onClose: () => 
                   <Building className="h-5 w-5 mr-3 text-muted-foreground" />
                   <span>{contact.company}</span>
                 </div>
+                {contact.website && (
+                  <div className="flex items-center">
+                    <CreditCard className="h-5 w-5 mr-3 text-muted-foreground" />
+                    <a href={contact.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                      {contact.website.replace(/(^\w+:|^)\/\//, '')}
+                    </a>
+                  </div>
+                )}
+                {contact.industry && (
+                  <div className="flex items-center">
+                    <Briefcase className="h-5 w-5 mr-3 text-muted-foreground" />
+                    <span>{contact.industry}</span>
+                  </div>
+                )}
+                {contact.revenue && (
+                  <div className="flex items-center">
+                    <DollarSign className="h-5 w-5 mr-3 text-muted-foreground" />
+                    <span>${contact.revenue.toLocaleString()}</span>
+                  </div>
+                )}
                 {contact.assignedTo && (
                   <div className="flex items-center">
                     <User className="h-5 w-5 mr-3 text-muted-foreground" />
@@ -479,6 +739,12 @@ function ContactDetail({ contact, onClose }: { contact: Contact, onClose: () => 
                   <div className="flex items-center">
                     <Calendar className="h-5 w-5 mr-3 text-muted-foreground" />
                     <span>Created: {contact.createdDate}</span>
+                  </div>
+                )}
+                {contact.nextFollowUp && (
+                  <div className="flex items-center">
+                    <Bell className="h-5 w-5 mr-3 text-muted-foreground" />
+                    <span>Follow-up: {new Date(contact.nextFollowUp).toLocaleDateString()}</span>
                   </div>
                 )}
               </div>
@@ -506,8 +772,8 @@ function ContactDetail({ contact, onClose }: { contact: Contact, onClose: () => 
           <Tabs defaultValue="activity">
             <TabsList className="w-full">
               <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
+              <TabsTrigger value="recordings" className="flex-1">Call Recordings</TabsTrigger>
               <TabsTrigger value="deals" className="flex-1">Deals</TabsTrigger>
-              <TabsTrigger value="notes" className="flex-1">Notes</TabsTrigger>
               <TabsTrigger value="emails" className="flex-1">Emails</TabsTrigger>
             </TabsList>
             
@@ -544,12 +810,16 @@ function ContactDetail({ contact, onClose }: { contact: Contact, onClose: () => 
                     <Button variant="outline">
                       Log Call
                     </Button>
-                    <Button variant="outline">
-                      Schedule Task
+                    <Button variant="outline" onClick={onSetReminder}>
+                      Set Reminder
                     </Button>
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+            
+            <TabsContent value="recordings" className="mt-4">
+              <ContactCallRecordings contactId={contact.id} contactName={contact.name} />
             </TabsContent>
             
             <TabsContent value="deals" className="mt-4">
@@ -563,21 +833,6 @@ function ContactDetail({ contact, onClose }: { contact: Contact, onClose: () => 
                     </Button>
                   </div>
                   <p className="text-muted-foreground">No deals associated with this contact yet.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="notes" className="mt-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium">Notes</h3>
-                    <Button size="sm">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Note
-                    </Button>
-                  </div>
-                  <p className="text-muted-foreground">No notes for this contact yet.</p>
                 </CardContent>
               </Card>
             </TabsContent>
