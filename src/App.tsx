@@ -10,6 +10,7 @@ import ContactsPage from "./pages/ContactsPage";
 import CallRecordingsPage from "./pages/CallRecordingsPage";
 import SalesDashboardPage from "./pages/SalesDashboardPage";
 import SalesPipelinePage from "./pages/SalesPipelinePage";
+import CalendarPage from "./pages/CalendarPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,7 +28,7 @@ const App = () => (
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/sales-pipeline" element={<SalesPipelinePage />} />
           <Route path="/call-recordings" element={<CallRecordingsPage />} />
-          <Route path="/calendar" element={<Navigate to="/dashboard" />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/settings" element={<Navigate to="/dashboard" />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
