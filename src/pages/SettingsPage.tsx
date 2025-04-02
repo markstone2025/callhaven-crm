@@ -13,7 +13,8 @@ import {
   Link, 
   Upload, 
   Download,
-  Settings as SettingsIcon 
+  Settings as SettingsIcon,
+  Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,11 +23,44 @@ import { useForm } from "react-hook-form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ChartContainer } from "@/components/ui/chart";
+import { format } from "date-fns";
 
 const SettingsPage = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [autoTranscriptEnabled, setAutoTranscriptEnabled] = useState(true);
   const { toast } = useToast();
+  
+  // Report state
+  const [editingReport, setEditingReport] = useState<null | {
+    id: string;
+    name: string;
+    description: string;
+    type: string;
+    frequency: string;
+    filters: { 
+      month: string;
+      metric: string;
+    };
+  }>(null);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  
+  const currentMonth = format(new Date(), 'MMMM yyyy');
+  const previousMonth = format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'MMMM yyyy');
+  
+  const reportForm = useForm({
+    defaultValues: {
+      name: "",
+      description: "",
+      type: "performance",
+      frequency: "weekly",
+      filterMonth: currentMonth,
+      filterMetric: "all"
+    }
+  });
   
   const handleSaveSettings = () => {
     toast({
@@ -70,6 +104,86 @@ const SettingsPage = () => {
       description: "Your data export has been started. You'll receive an email when it's ready.",
     });
   };
+  
+  const handleEditReport = (report: any) => {
+    setEditingReport(report);
+    reportForm.reset({
+      name: report.name,
+      description: report.description,
+      type: report.type,
+      frequency: report.frequency,
+      filterMonth: report.filters.month,
+      filterMetric: report.filters.metric
+    });
+    setIsReportDialogOpen(true);
+  };
+  
+  const handleCreateReport = () => {
+    setEditingReport(null);
+    reportForm.reset({
+      name: "",
+      description: "",
+      type: "performance",
+      frequency: "weekly",
+      filterMonth: currentMonth,
+      filterMetric: "all"
+    });
+    setIsReportDialogOpen(true);
+  };
+  
+  const handleSaveReport = (values: any) => {
+    const reportData = {
+      id: editingReport?.id || `report-${Date.now()}`,
+      name: values.name,
+      description: values.description,
+      type: values.type,
+      frequency: values.frequency,
+      filters: {
+        month: values.filterMonth,
+        metric: values.filterMetric
+      }
+    };
+    
+    toast({
+      title: editingReport ? "Report updated" : "Report created",
+      description: `${reportData.name} has been ${editingReport ? "updated" : "created"} successfully.`,
+    });
+    
+    setIsReportDialogOpen(false);
+  };
+
+  const handleRunReport = (report: any) => {
+    toast({
+      title: "Report generated",
+      description: `${report.name} report has been generated for ${report.filters.month}.`,
+    });
+  };
+  
+  // Sample reports data
+  const sampleReports = [
+    {
+      id: "report-1",
+      name: "Sales Performance",
+      description: "Track sales team performance with key metrics",
+      type: "performance",
+      frequency: "weekly",
+      filters: {
+        month: currentMonth,
+        metric: "sales"
+      }
+    },
+    {
+      id: "report-2",
+      name: "Call Volume Analysis",
+      description: "Analyze call patterns and peak times",
+      type: "analysis",
+      frequency: "monthly",
+      filters: {
+        month: previousMonth,
+        metric: "calls"
+      }
+    }
+  ];
   
   return (
     <Layout>
@@ -321,44 +435,269 @@ const SettingsPage = () => {
           
           <TabsContent value="reports" className="space-y-4 mt-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Custom Reports Builder</CardTitle>
-                <CardDescription>
-                  Create and schedule custom reports
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Custom Reports Builder</CardTitle>
+                  <CardDescription>
+                    Create and schedule custom reports
+                  </CardDescription>
+                </div>
+                <Button onClick={handleCreateReport}>Create New Report</Button>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="border rounded-lg p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium">Sales Performance</h3>
-                        <BarChart3 className="h-5 w-5 text-primary" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">Track sales team performance with key metrics</p>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">Edit</Button>
-                        <Button variant="outline" size="sm">Run Now</Button>
-                      </div>
-                    </div>
-                    
-                    <div className="border rounded-lg p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium">Call Volume Analysis</h3>
-                        <BarChart3 className="h-5 w-5 text-primary" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">Analyze call patterns and peak times</p>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">Edit</Button>
-                        <Button variant="outline" size="sm">Run Now</Button>
-                      </div>
-                    </div>
+                <div className="space-y-6">
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Report Name</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Time Period</TableHead>
+                          <TableHead>Frequency</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sampleReports.map((report) => (
+                          <TableRow key={report.id}>
+                            <TableCell className="font-medium">{report.name}</TableCell>
+                            <TableCell>{report.description}</TableCell>
+                            <TableCell>{report.filters.month}</TableCell>
+                            <TableCell className="capitalize">{report.frequency}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleEditReport(report)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleRunReport(report)}
+                                >
+                                  Run Now
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                   
-                  <Button>Create New Report</Button>
+                  {/* Sample report preview */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5" />
+                        <span>Sales Performance Preview</span>
+                      </CardTitle>
+                      <CardDescription>Monthly sales performance data for {currentMonth}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[300px] w-full">
+                        <ChartContainer
+                          config={{
+                            sales: { color: "#0ea5e9" },
+                            calls: { color: "#8b5cf6" },
+                            meetings: { color: "#10b981" }
+                          }}
+                        >
+                          {/* This is a placeholder for a chart visualization */}
+                          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                            Chart visualization would appear here based on selected filters
+                          </div>
+                        </ChartContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </CardContent>
             </Card>
+            
+            {/* Report Edit Dialog */}
+            <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+              <DialogContent className="sm:max-w-[525px]">
+                <DialogHeader>
+                  <DialogTitle>{editingReport ? "Edit Report" : "Create New Report"}</DialogTitle>
+                  <DialogDescription>
+                    {editingReport ? "Modify your report details and settings" : "Set up a new custom report"}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <Form {...reportForm}>
+                  <form onSubmit={reportForm.handleSubmit(handleSaveReport)} className="space-y-4">
+                    <FormField
+                      control={reportForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Report Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Sales Performance Summary" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={reportForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Description of what this report tracks" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={reportForm.control}
+                        name="type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Report Type</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select report type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="performance">Performance</SelectItem>
+                                <SelectItem value="analysis">Analysis</SelectItem>
+                                <SelectItem value="forecast">Forecast</SelectItem>
+                                <SelectItem value="summary">Summary</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={reportForm.control}
+                        name="frequency"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Frequency</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select frequency" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                                <SelectItem value="biweekly">Bi-Weekly</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                                <SelectItem value="quarterly">Quarterly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <Separator />
+                    <h3 className="text-base font-medium">Report Filters</h3>
+                    
+                    <FormField
+                      control={reportForm.control}
+                      name="filterMonth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            <span>Month</span>
+                          </FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select month" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value={format(new Date(), 'MMMM yyyy')}>
+                                {format(new Date(), 'MMMM yyyy')} (Current)
+                              </SelectItem>
+                              <SelectItem value={format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'MMMM yyyy')}>
+                                {format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'MMMM yyyy')}
+                              </SelectItem>
+                              <SelectItem value={format(new Date(new Date().setMonth(new Date().getMonth() - 2)), 'MMMM yyyy')}>
+                                {format(new Date(new Date().setMonth(new Date().getMonth() - 2)), 'MMMM yyyy')}
+                              </SelectItem>
+                              <SelectItem value={format(new Date(new Date().setMonth(new Date().getMonth() - 3)), 'MMMM yyyy')}>
+                                {format(new Date(new Date().setMonth(new Date().getMonth() - 3)), 'MMMM yyyy')}
+                              </SelectItem>
+                              <SelectItem value="custom">Custom Range...</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Select the month for which you want to generate the report
+                          </FormDescription>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={reportForm.control}
+                      name="filterMetric"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Metrics to Include</FormLabel>
+                          <RadioGroup 
+                            onValueChange={field.onChange} 
+                            defaultValue={field.value}
+                            className="grid grid-cols-2 gap-4"
+                          >
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="all" />
+                              </FormControl>
+                              <FormLabel className="font-normal">All Metrics</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="sales" />
+                              </FormControl>
+                              <FormLabel className="font-normal">Sales Only</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="calls" />
+                              </FormControl>
+                              <FormLabel className="font-normal">Calls Only</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="meetings" />
+                              </FormControl>
+                              <FormLabel className="font-normal">Meetings Only</FormLabel>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setIsReportDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit">
+                        {editingReport ? "Update Report" : "Create Report"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
           
           <TabsContent value="integrations" className="space-y-4 mt-4">
