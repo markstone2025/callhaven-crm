@@ -20,6 +20,7 @@ import { LeadScoreCard } from "./contacts/LeadScoreCard";
 import { EmailDialog } from "./contacts/EmailDialog";
 import { ReminderDialog } from "./contacts/ReminderDialog";
 import { ContactCallRecordings } from "./contacts/ContactCallRecordings";
+import { AddContactForm } from "./contacts/AddContactForm";
 import { 
   Table,
   TableBody,
@@ -266,16 +267,15 @@ export function Contacts() {
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
+  const [isAddContactDialogOpen, setIsAddContactDialogOpen] = useState(false);
 
   const filteredContacts = contacts.filter(contact => {
-    // Search filter
     const matchesSearch = 
       !searchQuery || 
       contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       contact.company.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Apply advanced filters
     const matchesIndustry = !filters.industry || filters.industry === "any" || contact.industry === filters.industry;
     const matchesCountry = !filters.country || filters.country === "any" || contact.country === filters.country;
     const matchesCompany = !filters.company || 
@@ -290,7 +290,6 @@ export function Contacts() {
            matchesCompany && matchesRevenue && matchesStatus && matchesScore;
   });
 
-  // Apply sorting
   const sortedContacts = [...filteredContacts].sort((a, b) => {
     if (!filters.sortBy) return 0;
     
@@ -342,6 +341,10 @@ export function Contacts() {
     return contacts.filter(contact => selectedContacts.includes(contact.id));
   };
 
+  const handleAddContact = (newContact: Contact) => {
+    setContacts([newContact, ...contacts]);
+  };
+
   return (
     <div className="space-y-6">
       {selectedContact ? (
@@ -378,7 +381,10 @@ export function Contacts() {
                   </Button>
                 </>
               )}
-              <Button className="shrink-0">
+              <Button 
+                className="shrink-0"
+                onClick={() => setIsAddContactDialogOpen(true)}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Contact
               </Button>
@@ -619,18 +625,22 @@ export function Contacts() {
         </>
       )}
 
-      {/* Email Dialog */}
       <EmailDialog 
         open={isEmailDialogOpen}
         onOpenChange={setIsEmailDialogOpen}
         selectedContacts={getSelectedContactObjects()}
       />
 
-      {/* Reminder Dialog */}
       <ReminderDialog
         open={isReminderDialogOpen}
         onOpenChange={setIsReminderDialogOpen}
         contact={selectedContact}
+      />
+
+      <AddContactForm
+        open={isAddContactDialogOpen}
+        onOpenChange={setIsAddContactDialogOpen}
+        onAddContact={handleAddContact}
       />
     </div>
   );
