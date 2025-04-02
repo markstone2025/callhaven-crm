@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Phone, User, Clock, Calendar, MessageSquare, MoreHorizontal, Download, ExternalLink, Mail, FileText, CheckCircle, Slack } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useVapiService } from "./VapiService";
 
 interface Recording {
   id: string;
@@ -31,10 +32,11 @@ interface Recording {
   date: string;
   duration: string;
   direction: "inbound" | "outbound";
-  status: "completed" | "missed" | "abandoned";
+  status: "completed" | "missed" | "abandoned" | "processing" | "failed";
   audioUrl: string;
   transcriptAvailable: boolean;
   tags: string[];
+  vapiIntegration?: boolean;
   transcript?: {
     text: string;
     highlights?: { time: string; text: string }[];
@@ -150,20 +152,62 @@ const directionIcons = {
 const statusColors = {
   completed: "bg-green-100 text-green-800",
   missed: "bg-red-100 text-red-800",
-  abandoned: "bg-yellow-100 text-yellow-800"
+  abandoned: "bg-yellow-100 text-yellow-800",
+  processing: "bg-blue-100 text-blue-800",
+  failed: "bg-red-100 text-red-800"
 };
 
 export function CallRecordings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRecording, setSelectedRecording] = useState<Recording | null>(null);
-  const [recordings, setRecordings] = useState<Recording[]>(mockRecordings);
+  const [recordings, setRecordings] = useState<Recording[]>([]);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [slackDialogOpen, setSlackDialogOpen] = useState(false);
   const [emailContent, setEmailContent] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [slackMessage, setSlackMessage] = useState("");
   const [showSummary, setShowSummary] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
+  const [showVapiRecordings, setShowVapiRecordings] = useState(false);
   const { toast } = useToast();
+  const vapiService = useVapiService();
+
+  useEffect(() => {
+    const mockRecordingsData = getMockRecordings();
+    setRecordings(mockRecordingsData);
+    
+    if (vapiService.isConnected()) {
+      loadVapiRecordings();
+    }
+  }, []);
+  
+  const loadVapiRecordings = async () => {
+    try {
+      const vapiCalls = await vapiService.fetchVapiCalls();
+      if (vapiCalls.length) {
+        const vapiRecordings = vapiCalls.map(call => ({
+          id: call.id,
+          title: call.title,
+          contact: {
+            name: "VAPI Contact",
+            company: "VAPI",
+          },
+          date: new Date().toISOString(),
+          duration: "00:00",
+          direction: "inbound" as "inbound" | "outbound",
+          status: call.status as any,
+          audioUrl: call.audioUrl,
+          transcriptAvailable: Boolean(call.transcriptUrl),
+          tags: ["vapi", "ai-analysis"],
+          vapiIntegration: true
+        }));
+        
+        setRecordings(prev => [...prev, ...vapiRecordings]);
+      }
+    } catch (error) {
+      console.error("Error loading VAPI recordings:", error);
+    }
+  };
 
   const filteredRecordings = recordings.filter(recording =>
     recording.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -236,13 +280,28 @@ export function CallRecordings() {
     }
   };
 
+  const openInVapi = (recording: Recording) => {
+    if (recording.vapiIntegration && recording.id) {
+      vapiService.openInVapi(recording.id);
+    } else {
+      toast({
+        title: "Not Available",
+        description: "This recording is not available in VAPI",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getFilteredRecordings = () => {
+    if (activeTab === "all") return filteredRecordings;
+    if (activeTab === "inbound") return filteredRecordings.filter(r => r.direction === "inbound");
+    if (activeTab === "outbound") return filteredRecordings.filter(r => r.direction === "outbound");
+    if (activeTab === "vapi") return filteredRecordings.filter(r => r.vapiIntegration);
+    return filteredRecordings;
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Call Recordings</h1>
-        <p className="text-muted-foreground">Review and analyze your call recordings</p>
-      </div>
-
       <div className="flex items-center gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -254,24 +313,36 @@ export function CallRecordings() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+        
+        {vapiService.isConnected() && (
+          <Button 
+            variant="outline" 
+            onClick={() => setShowVapiRecordings(!showVapiRecordings)}
+          >
+            {showVapiRecordings ? "Hide VAPI Recordings" : "Show VAPI Recordings"}
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <Tabs defaultValue="all">
+          <Tabs defaultValue="all" onValueChange={setActiveTab}>
             <div className="flex items-center justify-between mb-4">
               <TabsList>
                 <TabsTrigger value="all">All Calls</TabsTrigger>
                 <TabsTrigger value="inbound">Inbound</TabsTrigger>
                 <TabsTrigger value="outbound">Outbound</TabsTrigger>
+                {vapiService.isConnected() && (
+                  <TabsTrigger value="vapi">VAPI</TabsTrigger>
+                )}
               </TabsList>
             </div>
             
             <TabsContent value="all" className="space-y-4">
-              {filteredRecordings.map((recording) => (
+              {getFilteredRecordings().map((recording) => (
                 <Card 
                   key={recording.id} 
-                  className={`${selectedRecording?.id === recording.id ? 'ring-2 ring-primary' : ''}`}
+                  className={`${selectedRecording?.id === recording.id ? 'ring-2 ring-primary' : ''} ${recording.vapiIntegration ? 'border-primary/20 bg-primary/5' : ''}`}
                   onClick={() => setSelectedRecording(recording)}
                 >
                   <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between">
@@ -281,7 +352,12 @@ export function CallRecordings() {
                         <AvatarFallback>{recording.contact.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <h3 className="font-semibold text-sm">{recording.title}</h3>
+                        <h3 className="font-semibold text-sm">
+                          {recording.title}
+                          {recording.vapiIntegration && (
+                            <Badge variant="outline" className="ml-2 bg-primary/10 text-primary">VAPI</Badge>
+                          )}
+                        </h3>
                         <div className="flex items-center text-xs text-muted-foreground gap-1 mt-1">
                           <User className="h-3 w-3" />
                           <span>{recording.contact.name}</span>
@@ -329,7 +405,10 @@ export function CallRecordings() {
                             View transcript
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          openInVapi(recording);
+                        }}>
                           <ExternalLink className="h-4 w-4 mr-2" />
                           Open in VAPI
                         </DropdownMenuItem>
@@ -365,7 +444,7 @@ export function CallRecordings() {
                 </Card>
               ))}
               
-              {filteredRecordings.length === 0 && (
+              {getFilteredRecordings().length === 0 && (
                 <div className="text-center py-12">
                   <Phone className="mx-auto h-12 w-12 text-muted-foreground opacity-30" />
                   <h3 className="mt-4 text-lg font-semibold">No recordings found</h3>
@@ -377,7 +456,7 @@ export function CallRecordings() {
             </TabsContent>
             
             <TabsContent value="inbound" className="space-y-4">
-              {filteredRecordings.filter(r => r.direction === 'inbound').map((recording) => (
+              {getFilteredRecordings().filter(r => r.direction === 'inbound').map((recording) => (
                 <Card 
                   key={recording.id} 
                   className={`${selectedRecording?.id === recording.id ? 'ring-2 ring-primary' : ''}`}
@@ -389,7 +468,7 @@ export function CallRecordings() {
                 </Card>
               ))}
               
-              {filteredRecordings.filter(r => r.direction === 'inbound').length === 0 && (
+              {getFilteredRecordings().filter(r => r.direction === 'inbound').length === 0 && (
                 <div className="text-center py-12">
                   <Phone className="mx-auto h-12 w-12 text-muted-foreground opacity-30" />
                   <h3 className="mt-4 text-lg font-semibold">No inbound recordings found</h3>
@@ -401,7 +480,7 @@ export function CallRecordings() {
             </TabsContent>
             
             <TabsContent value="outbound" className="space-y-4">
-              {filteredRecordings.filter(r => r.direction === 'outbound').map((recording) => (
+              {getFilteredRecordings().filter(r => r.direction === 'outbound').map((recording) => (
                 <Card 
                   key={recording.id} 
                   className={`${selectedRecording?.id === recording.id ? 'ring-2 ring-primary' : ''}`}
@@ -413,7 +492,7 @@ export function CallRecordings() {
                 </Card>
               ))}
               
-              {filteredRecordings.filter(r => r.direction === 'outbound').length === 0 && (
+              {getFilteredRecordings().filter(r => r.direction === 'outbound').length === 0 && (
                 <div className="text-center py-12">
                   <Phone className="mx-auto h-12 w-12 text-muted-foreground opacity-30" />
                   <h3 className="mt-4 text-lg font-semibold">No outbound recordings found</h3>
@@ -423,6 +502,42 @@ export function CallRecordings() {
                 </div>
               )}
             </TabsContent>
+            
+            {vapiService.isConnected() && (
+              <TabsContent value="vapi" className="space-y-4">
+                {filteredRecordings.filter(r => r.vapiIntegration).map((recording) => (
+                  <Card 
+                    key={recording.id} 
+                    className={`${selectedRecording?.id === recording.id ? 'ring-2 ring-primary' : ''} border-primary/20 bg-primary/5`}
+                    onClick={() => setSelectedRecording(recording)}
+                  >
+                    <CardHeader className="p-4 pb-2">
+                      <h3 className="font-semibold text-sm">
+                        {recording.title}
+                        <Badge variant="outline" className="ml-2 bg-primary/10 text-primary">VAPI</Badge>
+                      </h3>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <Badge variant="outline" className={statusColors[recording.status]}>
+                          {recording.status.charAt(0).toUpperCase() + recording.status.slice(1)}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                {filteredRecordings.filter(r => r.vapiIntegration).length === 0 && (
+                  <div className="text-center py-12">
+                    <ExternalLink className="mx-auto h-12 w-12 text-muted-foreground opacity-30" />
+                    <h3 className="mt-4 text-lg font-semibold">No VAPI recordings found</h3>
+                    <p className="text-muted-foreground mt-2">
+                      Connect your VAPI account to see AI-analyzed call recordings.
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+            )}
           </Tabs>
         </div>
         
@@ -558,7 +673,10 @@ export function CallRecordings() {
                   <p className="text-sm text-muted-foreground">
                     View this recording in VAPI for advanced analytics and AI-powered insights.
                   </p>
-                  <Button className="mt-4 w-full">
+                  <Button 
+                    className="mt-4 w-full"
+                    onClick={() => openInVapi(selectedRecording)}
+                  >
                     <ExternalLink className="mr-2 h-4 w-4" />
                     Open in VAPI
                   </Button>
@@ -681,6 +799,108 @@ export function CallRecordings() {
       </Dialog>
     </div>
   );
+}
+
+function getMockRecordings() {
+  return [
+    {
+      id: "1",
+      title: "Product Demo Call",
+      contact: {
+        name: "Mark Johnson",
+        email: "mark@acmeinc.com",
+        company: "Acme Inc.",
+      },
+      date: "2023-09-15T14:30:00",
+      duration: "23:45",
+      direction: "outbound",
+      status: "completed",
+      audioUrl: "https://ia800107.us.archive.org/15/items/LoveAndMarriage_124/LoveAndMarriage.mp3",
+      transcriptAvailable: true,
+      tags: ["demo", "product", "follow-up"],
+      transcript: {
+        text: "Sales Rep: Hi Mark, thanks for joining the call today. I wanted to walk you through our product features as we discussed last week.\n\nMark: Hi, yes, I've been looking forward to this. I'm particularly interested in the reporting capabilities.\n\nSales Rep: Great! Let me share my screen and show you the dashboard. As you can see, our analytics provide real-time metrics on all your sales activities.\n\nMark: That looks impressive. Can multiple team members access these reports?\n\nSales Rep: Absolutely! You can set different permission levels for your team. Let me show you how that works...\n\nMark: Perfect. And what about integration with our current CRM?\n\nSales Rep: We have a seamless integration process. I can arrange a call with our implementation team to discuss the specifics of your setup.\n\nMark: That would be helpful. I think this solution could work well for us.",
+        highlights: [
+          { time: "02:15", text: "Client interested in reporting capabilities" },
+          { time: "05:30", text: "Discussed team permission levels" },
+          { time: "12:45", text: "Client impressed with dashboard" },
+          { time: "18:20", text: "Integration with current CRM is important" }
+        ]
+      },
+      summary: "Mark from Acme Inc. showed strong interest in our product, particularly the reporting features and team permission controls. He was impressed with the dashboard and asked about CRM integration. A follow-up with the implementation team is needed to discuss integration specifics. Overall positive reception with potential for closing soon."
+    },
+    {
+      id: "2",
+      title: "Support Call",
+      contact: {
+        name: "Sarah Williams",
+        email: "sarah@globexcorp.com",
+        company: "Globex Corp",
+      },
+      date: "2023-09-14T10:15:00",
+      duration: "12:18",
+      direction: "inbound",
+      status: "completed",
+      audioUrl: "https://ia801309.us.archive.org/34/items/PaulWhitemanwithMildredBailey/PaulWhitemanWithMildredBaileyTheOldManOfTheMountain.mp3",
+      transcriptAvailable: true,
+      tags: ["support", "bug", "resolved"],
+      transcript: {
+        text: "Support: Thank you for calling support. How can I help you today?\n\nSarah: I'm having an issue with the reporting module. It seems to be showing incorrect data for the last month.\n\nSupport: I'm sorry to hear that. Let me take a look. Can you tell me which specific reports are affected?\n\nSarah: It's mainly the sales forecast report. The numbers don't match our actual sales records.\n\nSupport: I see the issue now. There appears to be a calculation error in the latest update. Let me apply a quick fix.\n\nSarah: That would be great. We need these reports for a meeting tomorrow.\n\nSupport: I've applied the fix. Can you refresh your browser and check if the data looks correct now?\n\nSarah: Yes, it's working correctly now. Thank you for the quick resolution.\n\nSupport: You're welcome. Is there anything else I can help you with today?",
+        highlights: [
+          { time: "01:20", text: "Issue with reporting module showing incorrect data" },
+          { time: "03:45", text: "Sales forecast report numbers don't match actual records" },
+          { time: "06:30", text: "Identified calculation error in latest update" },
+          { time: "08:15", text: "Applied fix and verified working" }
+        ]
+      },
+      summary: "Sarah from Globex Corp reported issues with the sales forecast report showing incorrect data. The problem was identified as a calculation error in the latest update. A fix was applied during the call and Sarah confirmed the problem was resolved. The quick resolution was appreciated as they needed the reports for a meeting the next day."
+    },
+    {
+      id: "3",
+      title: "Sales Follow-up",
+      contact: {
+        name: "Robert Wilson",
+        company: "Initech",
+      },
+      date: "2023-09-13T16:45:00",
+      duration: "18:22",
+      direction: "outbound",
+      status: "completed",
+      audioUrl: "https://ia600607.us.archive.org/16/items/MoonRiverByPapaBoarGroove/PapaBoarGroove-MoonRiver.mp3",
+      transcriptAvailable: false,
+      tags: ["sales", "proposal", "negotiation"]
+    },
+    {
+      id: "4",
+      title: "Initial Consultation",
+      contact: {
+        name: "Emily Davis",
+        company: "Wayne Enterprises",
+      },
+      date: "2023-09-12T11:00:00",
+      duration: "31:07",
+      direction: "outbound",
+      status: "completed",
+      audioUrl: "https://ia800209.us.archive.org/19/items/TupacChangesOfficialMusicVideo/Tupac%20-%20Changes%20-%20Official%20Music%20Video.mp3",
+      transcriptAvailable: true,
+      tags: ["consultation", "new client"]
+    },
+    {
+      id: "5",
+      title: "Technical Discussion",
+      contact: {
+        name: "Michael Brown",
+        company: "Stark Industries",
+      },
+      date: "2023-09-11T13:30:00",
+      duration: "42:15",
+      direction: "inbound",
+      status: "completed",
+      audioUrl: "https://ia801307.us.archive.org/26/items/LetItBe_386/LetItBe.mp3",
+      transcriptAvailable: true,
+      tags: ["technical", "integration", "api"]
+    },
+  ];
 }
 
 export default CallRecordings;
