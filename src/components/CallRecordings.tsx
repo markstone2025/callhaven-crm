@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Search, Phone, User, Clock, Calendar, MessageSquare, MoreHorizontal, Download, ExternalLink, Mail, FileText, CheckCircle, Slack } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -194,8 +195,8 @@ export function CallRecordings() {
           },
           date: new Date().toISOString(),
           duration: "00:00",
-          direction: "inbound" as "inbound" | "outbound",
-          status: call.status as any,
+          direction: "inbound" as const, // Using as const to ensure it's exactly "inbound"
+          status: call.status as "completed" | "missed" | "abandoned" | "processing" | "failed",
           audioUrl: call.audioUrl,
           transcriptAvailable: Boolean(call.transcriptUrl),
           tags: ["vapi", "ai-analysis"],
@@ -801,7 +802,7 @@ export function CallRecordings() {
   );
 }
 
-function getMockRecordings() {
+function getMockRecordings(): Recording[] {
   return [
     {
       id: "1",
@@ -813,7 +814,7 @@ function getMockRecordings() {
       },
       date: "2023-09-15T14:30:00",
       duration: "23:45",
-      direction: "outbound",
+      direction: "outbound", // Now explicitly typed as "outbound"
       status: "completed",
       audioUrl: "https://ia800107.us.archive.org/15/items/LoveAndMarriage_124/LoveAndMarriage.mp3",
       transcriptAvailable: true,
@@ -839,7 +840,7 @@ function getMockRecordings() {
       },
       date: "2023-09-14T10:15:00",
       duration: "12:18",
-      direction: "inbound",
+      direction: "inbound", // Now explicitly typed as "inbound"
       status: "completed",
       audioUrl: "https://ia801309.us.archive.org/34/items/PaulWhitemanwithMildredBailey/PaulWhitemanWithMildredBaileyTheOldManOfTheMountain.mp3",
       transcriptAvailable: true,
@@ -864,7 +865,7 @@ function getMockRecordings() {
       },
       date: "2023-09-13T16:45:00",
       duration: "18:22",
-      direction: "outbound",
+      direction: "outbound", // Now explicitly typed as "outbound"
       status: "completed",
       audioUrl: "https://ia600607.us.archive.org/16/items/MoonRiverByPapaBoarGroove/PapaBoarGroove-MoonRiver.mp3",
       transcriptAvailable: false,
@@ -879,7 +880,7 @@ function getMockRecordings() {
       },
       date: "2023-09-12T11:00:00",
       duration: "31:07",
-      direction: "outbound",
+      direction: "outbound", // Now explicitly typed as "outbound"
       status: "completed",
       audioUrl: "https://ia800209.us.archive.org/19/items/TupacChangesOfficialMusicVideo/Tupac%20-%20Changes%20-%20Official%20Music%20Video.mp3",
       transcriptAvailable: true,
@@ -894,7 +895,7 @@ function getMockRecordings() {
       },
       date: "2023-09-11T13:30:00",
       duration: "42:15",
-      direction: "inbound",
+      direction: "inbound", // Now explicitly typed as "inbound"
       status: "completed",
       audioUrl: "https://ia801307.us.archive.org/26/items/LetItBe_386/LetItBe.mp3",
       transcriptAvailable: true,
