@@ -55,6 +55,20 @@ export function useVapiService() {
           title: "VAPI Customer Call",
           audioUrl: "https://ia801307.us.archive.org/26/items/LetItBe_386/LetItBe.mp3",
           status: "processing"
+        },
+        {
+          id: "vapi-4",
+          title: "Enterprise Client Onboarding",
+          audioUrl: "https://example.com/audio4.mp3",
+          status: "completed",
+          transcriptUrl: "https://vapi.ai/transcript/vapi-4"
+        },
+        {
+          id: "vapi-5",
+          title: "Support Call - Technical Issue",
+          audioUrl: "https://example.com/audio5.mp3",
+          status: "completed",
+          transcriptUrl: "https://vapi.ai/transcript/vapi-5"
         }
       ];
     } catch (error) {

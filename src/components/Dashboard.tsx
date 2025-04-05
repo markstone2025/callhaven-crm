@@ -3,6 +3,7 @@ import { Calendar, Phone, User, Clock } from "lucide-react";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { VapiCallsWidget } from "@/components/VapiCallsWidget";
 
 export function Dashboard() {
   return (
@@ -37,6 +38,11 @@ export function Dashboard() {
           icon={Calendar}
           description="Scheduled for next 7 days"
         />
+      </div>
+
+      {/* Add VAPI Calls Widget */}
+      <div className="mb-6">
+        <VapiCallsWidget />
       </div>
 
       <Tabs defaultValue="recent">
