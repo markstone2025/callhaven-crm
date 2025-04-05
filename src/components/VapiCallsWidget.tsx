@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useVapiService } from "@/components/VapiService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,7 +41,13 @@ export function VapiCallsWidget({ showDetailed = false }: VapiCallsWidgetProps) 
           ...call,
           duration: call.id === "vapi-1" ? "4m 32s" : call.id === "vapi-2" ? "12m 18s" : call.id === "vapi-3" ? "2m 05s" : "8m 45s",
           date: call.id === "vapi-1" ? "2023-04-03" : call.id === "vapi-2" ? "2023-04-02" : call.id === "vapi-3" ? "2023-04-01" : "2023-03-30",
-          sentiment: call.id === "vapi-1" ? "positive" : call.id === "vapi-2" ? "neutral" : call.id === "vapi-3" ? "negative" : "positive",
+          sentiment: call.id === "vapi-1" 
+            ? "positive" as const
+            : call.id === "vapi-2" 
+            ? "neutral" as const
+            : call.id === "vapi-3"
+            ? "negative" as const
+            : "positive" as const,
           keywords: call.id === "vapi-1" 
             ? ["pricing", "features", "demo"] 
             : call.id === "vapi-2" 
