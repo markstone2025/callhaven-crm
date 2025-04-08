@@ -12,6 +12,7 @@ import SalesDashboardPage from "./pages/SalesDashboardPage";
 import SalesPipelinePage from "./pages/SalesPipelinePage";
 import CalendarPage from "./pages/CalendarPage";
 import SettingsPage from "./pages/SettingsPage";
+import OutboundCallsPage from "./pages/OutboundCallsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/sales-pipeline" element={<SalesPipelinePage />} />
           <Route path="/call-recordings" element={<CallRecordingsPage />} />
+          <Route path="/outbound-calls" element={<OutboundCallsPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
